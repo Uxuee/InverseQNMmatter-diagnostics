@@ -68,6 +68,8 @@ def observables_to_relative_shifts(
 ) -> tuple[float, float]:
     Omega0 = 1.0 / (3.0 * np.sqrt(3.0) * M)
     lambda0 = 1.0 / (3.0 * np.sqrt(3.0) * M)
+    # A and B are the two relative QNM shifts fixed by one complex QNM.
+    # A = deltaOmega/Omega0, B = deltaLambda/lambda0.
     A = Omega_obs / Omega0 - 1.0
     B = lambda_obs / lambda0 - 1.0
     return A, B
@@ -86,7 +88,9 @@ def shifts_to_matter_diagnostics(A: float, B: float, M: float) -> dict[str, floa
         "A": A,
         "B": B,
         "delta_f_r0": (2.0 / 3.0) * A,
+        # I_rho is an integrated diagnostic, not a full density reconstruction.
         "I_rho": r0 * A / (12.0 * np.pi),
+        # local_combo means rho(r0) * (1 + w_theta).
         "local_combo": (A - B) / (4.0 * np.pi * r0**2),
     }
 
@@ -240,28 +244,34 @@ def build_profile_reconstructions(df: pd.DataFrame, M: float, L_values: list[flo
     return pd.DataFrame(rows)
 
 
-def plot_shift_curves(df: pd.DataFrame, out_dir: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), constrained_layout=True)
-    for model, group in df.groupby("model"):
-        if model == "Kiselev":
-            for w_q, subgroup in group.groupby("w_q"):
-                ordered = subgroup.sort_values("k")
-                label = f"Kiselev w_q={w_q:g}"
-                axes[0].plot(ordered["k"], ordered["A"], marker="o", label=label)
-                axes[1].plot(ordered["k"], ordered["B"], marker="o", label=label)
-        else:
-            ordered = group.sort_values("q")
-            axes[0].plot(ordered["q"], ordered["A"], marker="o", label=model)
-            axes[1].plot(ordered["q"], ordered["B"], marker="o", label=model)
+def plot_bardeen_hayward_shifts(df: pd.DataFrame, out_dir: Path) -> None:
+    fig, ax = plt.subplots(figsize=(7.5, 5), constrained_layout=True)
+    for model in ["Bardeen", "Hayward"]:
+        ordered = df[df["model"] == model].sort_values("q")
+        ax.plot(ordered["q"], ordered["A"], marker="o", label=f"{model}: A")
+        ax.plot(ordered["q"], ordered["B"], marker="s", linestyle="--", label=f"{model}: B")
 
-    axes[0].set_title("Relative Omega shift")
-    axes[0].set_xlabel("model parameter: q or k")
-    axes[0].set_ylabel("A = deltaOmega/Omega0")
-    axes[1].set_title("Relative lambda shift")
-    axes[1].set_xlabel("model parameter: q or k")
-    axes[1].set_ylabel("B = deltaLambda/lambda0")
-    axes[1].legend(fontsize=8)
-    fig.savefig(out_dir / "relative_shifts_by_model.png", dpi=180)
+    ax.set_xlabel("q / M")
+    ax.set_ylabel("relative shifts")
+    ax.set_title("Relative eikonal QNM shifts: Bardeen and Hayward")
+    ax.legend(fontsize=8)
+    fig.savefig(out_dir / "relative_shifts_bardeen_hayward.png", dpi=180)
+    plt.close(fig)
+
+
+def plot_kiselev_shifts(df: pd.DataFrame, out_dir: Path) -> None:
+    fig, ax = plt.subplots(figsize=(7.5, 5), constrained_layout=True)
+    kiselev = df[df["model"] == "Kiselev"]
+    for w_q, subgroup in kiselev.groupby("w_q"):
+        ordered = subgroup.sort_values("k")
+        ax.plot(ordered["k"], ordered["A"], marker="o", label=f"A, w_q={w_q:g}")
+        ax.plot(ordered["k"], ordered["B"], marker="s", linestyle="--", label=f"B, w_q={w_q:g}")
+
+    ax.set_xlabel("k")
+    ax.set_ylabel("relative shifts")
+    ax.set_title("Relative eikonal QNM shifts: Kiselev")
+    ax.legend(fontsize=8, ncols=2)
+    fig.savefig(out_dir / "relative_shifts_kiselev.png", dpi=180)
     plt.close(fig)
 
 
@@ -276,9 +286,9 @@ def plot_diagnostic(df: pd.DataFrame, out_dir: Path, column: str, ylabel: str, f
             ordered = group.sort_values("q")
             ax.plot(ordered["q"], ordered[column], marker="o", label=model)
 
-    ax.set_xlabel("model parameter: q or k")
+    ax.set_xlabel("model parameter (q for Bardeen/Hayward, k for Kiselev)")
     ax.set_ylabel(ylabel)
-    ax.set_title(ylabel)
+    ax.set_title(f"{ylabel} (qualitative trend comparison)")
     ax.legend(fontsize=8)
     fig.savefig(out_dir / filename, dpi=180)
     plt.close(fig)
@@ -302,15 +312,16 @@ def plot_model_comparison(df: pd.DataFrame, out_dir: Path) -> None:
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.set_ylabel("diagnostic range")
-    ax.set_title("Inferred diagnostic trend ranges by model")
+    ax.set_title("Qualitative diagnostic trend ranges by model")
     ax.legend(fontsize=8)
-    fig.savefig(out_dir / "diagnostic_trend_comparison.png", dpi=180)
+    fig.savefig(out_dir / "diagnostic_trend_qualitative_comparison.png", dpi=180)
     plt.close(fig)
 
 
 def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
-    plot_shift_curves(df, out_dir)
+    plot_bardeen_hayward_shifts(df, out_dir)
+    plot_kiselev_shifts(df, out_dir)
     plot_diagnostic(df, out_dir, "I_rho", "I_rho", "I_rho_by_model.png")
     plot_diagnostic(
         df,

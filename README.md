@@ -1,20 +1,30 @@
-# Inverse QNM Matter Diagnostics
+# What Can One Eikonal QNM Tell Us About Effective Matter?
 
-This repository implements inverse diagnostics for effective matter
-distributions around black holes using one complex eikonal quasinormal-mode
-frequency.
+Inverse diagnostics for the matter combinations fixed by eikonal QNM shifts
+around black holes.
 
-The goal is not to reconstruct the full matter profile from a single QNM.
-Instead, the code extracts the matter combinations that are actually fixed by
-the static anisotropic-fluid formulas:
+This repository is a careful research prototype. It starts from one complex
+eikonal QNM frequency and extracts the effective matter combinations fixed by
+static anisotropic-fluid perturbative formulas.
 
-- `delta_f(r0)`, the metric deformation at the photon sphere
-- `I_rho`, an integrated density diagnostic outside the photon sphere
-- `rho(r0)(1+w_theta)`, a local density-pressure combination
+## Main limitation
 
-One complex QNM gives two real observables, `Omega` and `lambda`. Therefore the
-full density profile `rho(r)` and `w_theta` cannot be determined separately
-without adding an extra model assumption.
+A single complex eikonal QNM provides only two real quantities: `Omega` and
+`lambda`.
+
+Therefore, this code does not reconstruct the full matter profile `rho(r)`,
+and it does not determine `w_theta` separately in a model-independent way.
+Instead, it extracts only the combinations of metric and matter variables that
+are fixed by the perturbative formulas.
+
+The model-independent diagnostics are:
+
+- `delta_f(r0)`: metric deformation at the photon sphere
+- `I_rho`: integrated density diagnostic outside the photon sphere
+- `rho(r0) * (1 + w_theta)`: local density-pressure combination
+
+Any reconstruction of `rho0` or `w_theta` requires an additional assumed
+density profile.
 
 ## Physics
 
@@ -27,7 +37,7 @@ omega_QNM = ell * Omega - i * (n + 1/2) * lambda
 Given `omega_QNM`, `ell`, `n`, and `M`, the script computes
 
 ```text
-Omega  = Re(omega_QNM) / ell
+Omega = Re(omega_QNM) / ell
 lambda = -Im(omega_QNM) / (n + 1/2)
 ```
 
@@ -42,11 +52,11 @@ r0 = 3M
 The relative shifts are
 
 ```text
-A = deltaOmega/Omega0  = Omega/Omega0 - 1
+A = deltaOmega/Omega0 = Omega/Omega0 - 1
 B = deltaLambda/lambda0 = lambda/lambda0 - 1
 ```
 
-The inferred matter diagnostics are
+The inferred diagnostic combinations are
 
 ```text
 delta_f(r0) = (2/3) * A
@@ -57,6 +67,9 @@ I_rho = integral_{r0}^{infinity} rho(s) s^2 ds
 local_combo = rho(r0) * (1 + w_theta)
             = (A - B) / (4*pi*r0^2)
 ```
+
+Here `I_rho` is an integrated diagnostic, not a full density reconstruction,
+and `local_combo` is the combination `rho(r0) * (1 + w_theta)`.
 
 ## Validation Models
 
@@ -70,18 +83,24 @@ The script validates the inverse formulas using three forward examples:
   - `deltaOmega/Omega0 = q^3/(27 M^3)`
   - `deltaLambda/lambda0 = -2 q^3/(27 M^3)`
 
-## Conditional Profile Reconstruction
+The validation checks that the inverse diagnostic pipeline recovers the
+effective combinations implied by these known shift formulas.
 
-The script also includes an optional reconstruction under the assumed density
-profile
+## Optional toy-profile reconstruction
+
+This step is not model-independent. It only shows what `rho0` and `w_theta`
+would be if the exponential density profile were assumed:
 
 ```text
-rho(r) = rho0 * exp(-(r-r0)/L)
+rho(r) = rho0 * exp(-(r - r0) / L)
 ```
 
-with fixed `L`. Under that assumption, it estimates `rho0` and `w_theta`.
-This is conditional on the chosen profile and should not be interpreted as a
-model-independent matter reconstruction.
+The results should not be interpreted as a unique reconstruction of the matter
+distribution.
+
+With fixed `L`, the code uses `I_rho` to estimate `rho0`, then uses
+`local_combo = rho(r0) * (1 + w_theta)` to estimate a conditional value of
+`w_theta`. This is a toy assumed profile, not a model-independent result.
 
 ## Quick Start
 
@@ -107,36 +126,45 @@ outputs/inverse_diagnostics/
 
 - `inverse_diagnostics.csv`
 - `profile_reconstruction.csv`
-- `relative_shifts_by_model.png`
+- `relative_shifts_bardeen_hayward.png`
+- `relative_shifts_kiselev.png`
 - `I_rho_by_model.png`
 - `local_combo_by_model.png`
-- `diagnostic_trend_comparison.png`
+- `diagnostic_trend_qualitative_comparison.png`
 
 ## Figures
 
-![Relative shifts by model](outputs/inverse_diagnostics/relative_shifts_by_model.png)
+![Bardeen and Hayward relative shifts](outputs/inverse_diagnostics/relative_shifts_bardeen_hayward.png)
 
 Caption: Relative shifts `A = deltaOmega/Omega0` and
-`B = deltaLambda/lambda0` versus the model parameter. Bardeen and Hayward use
-`q`; Kiselev uses `k` at several fixed `w_q` values.
+`B = deltaLambda/lambda0` versus `q / M` for Bardeen and Hayward.
+
+![Kiselev relative shifts](outputs/inverse_diagnostics/relative_shifts_kiselev.png)
+
+Caption: Relative shifts `A = deltaOmega/Omega0` and
+`B = deltaLambda/lambda0` versus `k` for Kiselev at fixed `w_q` values.
 
 ![Integrated density diagnostic](outputs/inverse_diagnostics/I_rho_by_model.png)
 
-Caption: Inferred integrated density diagnostic `I_rho`.
+Caption: Inferred integrated density diagnostic `I_rho`. This is a qualitative
+trend plot because the sampled parameter intervals are model-dependent.
 
 ![Local pressure-density combination](outputs/inverse_diagnostics/local_combo_by_model.png)
 
-Caption: Inferred local combination `rho(r0)(1+w_theta)`.
+Caption: Inferred local combination `rho(r0) * (1 + w_theta)`. This is a
+diagnostic combination, not a separate determination of `rho(r0)` and
+`w_theta`.
 
-![Diagnostic trend comparison](outputs/inverse_diagnostics/diagnostic_trend_comparison.png)
+![Qualitative diagnostic trend comparison](outputs/inverse_diagnostics/diagnostic_trend_qualitative_comparison.png)
 
-Caption: Comparison of diagnostic trend ranges across Kiselev, Bardeen, and
-Hayward examples.
+Caption: Qualitative diagnostic-range comparison across validation models. The
+range comparison is qualitative only. The sampled parameter intervals are
+model-dependent, so the bars should not be interpreted as a direct physical
+ranking of the models.
 
 ## Scientific Status
 
-This is a compact inverse-analysis prototype. It is physically meaningful
-because it computes the diagnostic combinations implied by static
-anisotropic-fluid QNM-shift relations. It is also intentionally conservative:
-it does not claim that one complex QNM uniquely determines `rho(r)` or
-`w_theta`.
+This is a compact inverse-analysis prototype. It computes effective matter
+combinations implied by static anisotropic-fluid QNM-shift relations. It is
+intentionally conservative: it does not claim that one complex QNM determines
+`rho(r)`, `w_theta`, or the full matter distribution.
