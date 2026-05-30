@@ -16,6 +16,10 @@ The rotating eikonal baseline uses the azimuthal phase number m:
 The geodesic photon-ring frequency Omega_phi is signed by the branch
 convention. Residuals are computed from positive QNM frequency magnitudes,
 using Re(omega_QNM)/abs(m) and abs(Omega_phi).
+
+The residual-shift demo below is intentionally toy-model only. Replace
+toy_matter_hair_residual_shifts with explicit rotating perturbative formulas
+before making model-specific physical claims.
 """
 
 
@@ -26,6 +30,9 @@ ell = 2
 m = 2
 n = 0
 branch = 1  # +1 prograde, -1 retrograde
+demo_spins = [0.0, 0.3, 0.6, 0.9]
+demo_q_over_M = np.linspace(0.0, 0.35, 80)
+demo_fixed_q_over_M = [0.10, 0.20, 0.30]
 
 
 def validate_kerr_spin(M: float, a: float) -> None:
@@ -267,6 +274,66 @@ def schwarzschild_limit_check(M: float) -> pd.DataFrame:
     )
 
 
+def toy_matter_hair_residual_shifts(
+    q_over_M: float,
+    a_over_M: float,
+    branch: int,
+) -> tuple[float, float]:
+    """Placeholder residual shifts inspired by paper-style perturbations.
+
+    These are not final physical rotating formulas. They only provide a
+    controlled synthetic example of matter/hair-like shifts relative to Kerr:
+
+        A_Kerr = Omega_perturbed/Omega_Kerr - 1
+        B_Kerr = lambda_perturbed/lambda_Kerr - 1
+
+    Replace this function with explicit perturbative expressions from the
+    rotating model before interpreting the residuals physically.
+    """
+
+    validate_branch(branch)
+    q2 = q_over_M**2
+    spin = a_over_M
+    branch_spin = branch * spin
+    A_Kerr = q2 * (0.08 + 0.035 * branch_spin + 0.020 * spin**2)
+    B_Kerr = -q2 * (0.055 - 0.020 * branch_spin + 0.015 * spin**2)
+    return A_Kerr, B_Kerr
+
+
+def generate_toy_residual_grid(
+    spins: list[float],
+    q_values: np.ndarray,
+    M: float,
+) -> pd.DataFrame:
+    rows = []
+    for branch_value in [1, -1]:
+        branch_label = "prograde" if branch_value == 1 else "retrograde"
+        for spin in spins:
+            a_value = spin * M
+            Omega_Kerr_abs = abs(kerr_photon_frequency_signed(M, a_value, branch_value))
+            lambda_Kerr = kerr_lyapunov_exponent(M, a_value, branch_value)
+            for q_over_M in q_values:
+                A_Kerr, B_Kerr = toy_matter_hair_residual_shifts(
+                    q_over_M, spin, branch_value
+                )
+                rows.append(
+                    {
+                        "model": "toy_rotating_residual_placeholder",
+                        "q_over_M": q_over_M,
+                        "a_over_M": spin,
+                        "branch": branch_value,
+                        "branch_label": branch_label,
+                        "A_Kerr": A_Kerr,
+                        "B_Kerr": B_Kerr,
+                        "Omega_Kerr_abs": Omega_Kerr_abs,
+                        "lambda_Kerr": lambda_Kerr,
+                        "Omega_perturbed": Omega_Kerr_abs * (1.0 + A_Kerr),
+                        "lambda_perturbed": lambda_Kerr * (1.0 + B_Kerr),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
 def plot_branch_scan(
     scan: pd.DataFrame,
     y_column: str,
@@ -290,6 +357,61 @@ def plot_branch_scan(
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.legend()
+    fig.savefig(filename, dpi=180)
+    plt.close(fig)
+
+
+def plot_residual_vs_q(
+    residuals: pd.DataFrame,
+    y_column: str,
+    ylabel: str,
+    title: str,
+    filename: Path,
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.8), sharey=True, constrained_layout=True)
+    for ax, branch_label in zip(axes, ["prograde", "retrograde"]):
+        subset = residuals[residuals["branch_label"] == branch_label]
+        for spin, group in subset.groupby("a_over_M"):
+            ordered = group.sort_values("q_over_M")
+            ax.plot(
+                ordered["q_over_M"],
+                ordered[y_column],
+                label=f"a/M = {spin:.1f}",
+            )
+        ax.set_title(branch_label)
+        ax.set_xlabel("q/M")
+        ax.grid(alpha=0.25)
+        ax.legend()
+    axes[0].set_ylabel(ylabel)
+    fig.suptitle(title)
+    fig.savefig(filename, dpi=180)
+    plt.close(fig)
+
+
+def plot_residual_A_vs_spin(
+    fixed_q_values: list[float],
+    M: float,
+    filename: Path,
+) -> None:
+    spin_values = np.linspace(0.0, 0.95, 100)
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.8), sharey=True, constrained_layout=True)
+    for ax, branch_value, branch_label in zip(
+        axes,
+        [1, -1],
+        ["prograde", "retrograde"],
+    ):
+        for q_over_M in fixed_q_values:
+            A_values = [
+                toy_matter_hair_residual_shifts(q_over_M, spin, branch_value)[0]
+                for spin in spin_values
+            ]
+            ax.plot(spin_values, A_values, label=f"q/M = {q_over_M:.2f}")
+        ax.set_title(branch_label)
+        ax.set_xlabel("a/M")
+        ax.grid(alpha=0.25)
+        ax.legend()
+    axes[0].set_ylabel("A_Kerr = deltaOmega/Omega_Kerr")
+    fig.suptitle("Toy rotating residual A_Kerr versus spin")
     fig.savefig(filename, dpi=180)
     plt.close(fig)
 
@@ -321,30 +443,51 @@ def main() -> None:
     demo.to_csv(out_dir / "kerr_residual_demo.csv", index=False)
     sanity = schwarzschild_limit_check(M)
     sanity.to_csv(out_dir / "schwarzschild_limit_check.csv", index=False)
+    residuals = generate_toy_residual_grid(demo_spins, demo_q_over_M, M)
+    residuals.to_csv(out_dir / "toy_rotating_residuals.csv", index=False)
 
     scan = scan_kerr_baselines(M)
     plot_branch_scan(
         scan,
         "r_ph_over_M",
         "r_ph/M",
-        "Equatorial Kerr photon-ring radius",
+        "Baseline sanity check: Kerr photon-ring radius",
         out_dir / "kerr_photon_radius_vs_spin.png",
     )
     plot_branch_scan(
         scan,
         "M_Omega_phi_signed",
         "M * Omega_phi (signed)",
-        "Equatorial Kerr photon-ring frequency",
+        "Baseline sanity check: signed Kerr photon-ring frequency",
         out_dir / "kerr_photon_frequency_vs_spin.png",
     )
     plot_branch_scan(
         scan,
         "M_lambda_K",
         "M * lambda_K",
-        "Equatorial Kerr Lyapunov exponent",
+        "Baseline sanity check: Kerr Lyapunov exponent",
         out_dir / "kerr_lyapunov_vs_spin.png",
     )
     plot_synthetic_recovery(demo, out_dir / "synthetic_kerr_residual_recovery.png")
+    plot_residual_vs_q(
+        residuals,
+        "A_Kerr",
+        "A_Kerr = deltaOmega/Omega_Kerr",
+        "Toy rotating residual A_Kerr versus perturbation strength",
+        out_dir / "rotating_residual_A_vs_q.png",
+    )
+    plot_residual_vs_q(
+        residuals,
+        "B_Kerr",
+        "B_Kerr = deltaLambda/lambda_Kerr",
+        "Toy rotating residual B_Kerr versus perturbation strength",
+        out_dir / "rotating_residual_B_vs_q.png",
+    )
+    plot_residual_A_vs_spin(
+        demo_fixed_q_over_M,
+        M,
+        out_dir / "rotating_residual_A_vs_spin.png",
+    )
 
     print("Wrote rotating Kerr residual outputs to:")
     print(f"  {out_dir}")

@@ -152,10 +152,14 @@ Rotating Kerr residual outputs:
 
 - `kerr_residual_demo.csv`
 - `schwarzschild_limit_check.csv`
+- `toy_rotating_residuals.csv`
 - `kerr_photon_radius_vs_spin.png`
 - `kerr_photon_frequency_vs_spin.png`
 - `kerr_lyapunov_vs_spin.png`
 - `synthetic_kerr_residual_recovery.png`
+- `rotating_residual_A_vs_q.png`
+- `rotating_residual_B_vs_q.png`
+- `rotating_residual_A_vs_spin.png`
 
 ## Figures
 
@@ -268,26 +272,73 @@ The rotating module is a baseline-removal step. A physical rotating
 matter/hair interpretation requires additional perturbative formulas for the
 chosen rotating metric model.
 
+## Baseline sanity checks
+
+The pure Kerr plots show the baseline that must be removed before interpreting
+real data. They are not the matter/hair physics of the paper by themselves;
+they only verify the Kerr photon-ring quantities used as the reference.
+
 ![Kerr photon-ring radius](outputs/rotating_kerr_residuals/kerr_photon_radius_vs_spin.png)
 
-Caption: Equatorial Kerr photon-ring radius versus spin for prograde and
-retrograde branches.
+Caption: Baseline sanity check for the equatorial Kerr photon-ring radius
+versus spin for prograde and retrograde branches.
 
 ![Kerr photon-ring frequency](outputs/rotating_kerr_residuals/kerr_photon_frequency_vs_spin.png)
 
-Caption: Equatorial Kerr photon-ring orbital frequency versus spin. The sign
-tracks the branch convention.
+Caption: Baseline sanity check for the signed equatorial Kerr photon-ring
+orbital frequency versus spin. The sign tracks the branch convention.
 
 ![Kerr Lyapunov exponent](outputs/rotating_kerr_residuals/kerr_lyapunov_vs_spin.png)
 
-Caption: Numerical coordinate-time Lyapunov exponent versus spin. The script
-checks that the Schwarzschild limit approximately gives
-`lambda_K = 1/(3 sqrt(3) M)`.
+Caption: Baseline sanity check for the numerical coordinate-time Lyapunov
+exponent versus spin. The dashed line marks the Schwarzschild limit
+`M * lambda_Kerr = 1/(3 sqrt(3))`.
+
+The Schwarzschild-limit check is also saved numerically in
+`schwarzschild_limit_check.csv`.
+
+## Rotating residual diagnostics inspired by the paper
+
+The residual plots are closer to the paper's idea: they show how a
+matter/hair-like perturbation would shift the eikonal QNM quantities relative
+to Kerr.
+
+The plotted residual quantities are:
+
+```text
+A_Kerr = Omega_perturbed/Omega_Kerr - 1
+B_Kerr = lambda_perturbed/lambda_Kerr - 1
+```
+
+In the current rotating demo, these are synthetic toy residual shifts:
+
+```text
+A_Kerr = A_Kerr(q, a, branch)
+B_Kerr = B_Kerr(q, a, branch)
+```
+
+The residual formulas in this demo are placeholders unless replaced by the
+explicit perturbative expressions from the paper.
 
 ![Synthetic Kerr residual recovery](outputs/rotating_kerr_residuals/synthetic_kerr_residual_recovery.png)
 
 Caption: Injected versus recovered Kerr residual shifts for a synthetic QNM.
 This tests the residual extraction before using observational data.
+
+![Toy rotating residual A versus q](outputs/rotating_kerr_residuals/rotating_residual_A_vs_q.png)
+
+Caption: Toy residual shift `A_Kerr = deltaOmega/Omega_Kerr` versus `q/M`.
+Curves show several spins, with prograde and retrograde branches separated.
+
+![Toy rotating residual B versus q](outputs/rotating_kerr_residuals/rotating_residual_B_vs_q.png)
+
+Caption: Toy residual shift `B_Kerr = deltaLambda/lambda_Kerr` versus `q/M`.
+Curves show several spins, with prograde and retrograde branches separated.
+
+![Toy rotating residual A versus spin](outputs/rotating_kerr_residuals/rotating_residual_A_vs_spin.png)
+
+Caption: Toy residual shift `A_Kerr` versus spin for several fixed
+perturbation strengths `q/M`.
 
 ## Scientific Status
 
