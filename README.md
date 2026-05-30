@@ -124,6 +124,18 @@ Outputs are written to:
 outputs/inverse_diagnostics/
 ```
 
+Run the rotating Kerr residual baseline demo:
+
+```powershell
+python rotating_kerr_residual_diagnostics.py
+```
+
+Rotating-baseline outputs are written to:
+
+```text
+outputs/rotating_kerr_residuals/
+```
+
 ## Outputs
 
 - `inverse_diagnostics.csv`
@@ -135,6 +147,14 @@ outputs/inverse_diagnostics/
 - `local_combo_bardeen_hayward.png`
 - `local_combo_kiselev.png`
 - `diagnostic_trend_qualitative_comparison.png`
+
+Rotating Kerr residual outputs:
+
+- `kerr_residual_demo.csv`
+- `kerr_photon_radius_vs_spin.png`
+- `kerr_photon_frequency_vs_spin.png`
+- `kerr_lyapunov_vs_spin.png`
+- `synthetic_kerr_residual_recovery.png`
 
 ## Figures
 
@@ -179,6 +199,52 @@ This comparison is qualitative only. The sampled parameter intervals are
 model-dependent, and the parameters `q` and `k` do not have the same physical
 meaning. Therefore, the bars should not be interpreted as a direct physical
 ranking of the models.
+
+## Rotating Kerr baseline
+
+Before applying the inverse diagnostic idea to real gravitational-wave data,
+the rotating Kerr baseline must be removed. Real merger remnants are rotating
+black holes, so comparing an observed ringdown directly with a Schwarzschild
+reference would mix spin effects with any possible effective-matter or
+hair-like residual.
+
+This repository therefore includes a rotating Kerr residual diagnostic module.
+It computes the equatorial Kerr photon-ring radius, orbital frequency, and
+Lyapunov exponent, then compares an input eikonal QNM frequency with the Kerr
+baseline.
+
+The resulting quantities are:
+
+- `A_Kerr = Omega/Omega_Kerr - 1`
+- `B_Kerr = lambda/lambda_Kerr - 1`
+
+These should be interpreted as residual shifts relative to Kerr, not yet as
+direct matter diagnostics.
+
+The rotating module is a baseline-removal step. A physical rotating
+matter/hair interpretation requires additional perturbative formulas for the
+chosen rotating metric model.
+
+![Kerr photon-ring radius](outputs/rotating_kerr_residuals/kerr_photon_radius_vs_spin.png)
+
+Caption: Equatorial Kerr photon-ring radius versus spin for prograde and
+retrograde branches.
+
+![Kerr photon-ring frequency](outputs/rotating_kerr_residuals/kerr_photon_frequency_vs_spin.png)
+
+Caption: Equatorial Kerr photon-ring orbital frequency versus spin. The sign
+tracks the branch convention.
+
+![Kerr Lyapunov exponent](outputs/rotating_kerr_residuals/kerr_lyapunov_vs_spin.png)
+
+Caption: Numerical coordinate-time Lyapunov exponent versus spin. The script
+checks that the Schwarzschild limit approximately gives
+`lambda_K = 1/(3 sqrt(3) M)`.
+
+![Synthetic Kerr residual recovery](outputs/rotating_kerr_residuals/synthetic_kerr_residual_recovery.png)
+
+Caption: Injected versus recovered Kerr residual shifts for a synthetic QNM.
+This tests the residual extraction before using observational data.
 
 ## Scientific Status
 

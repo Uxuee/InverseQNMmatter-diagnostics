@@ -1,0 +1,2 @@
+M,a,a_over_M,ell,n,branch,omega_re,omega_im,A_Kerr_injected,B_Kerr_injected,A_Kerr_recovered,B_Kerr_recovered,A_abs_error,B_abs_error,r_ph,Omega_K,lambda_K,schwarzschild_lambda_expected,schwarzschild_lambda_numeric,schwarzschild_lambda_abs_error
+1.0,0.6,0.6,4,0,1,1.0524961959523167,-0.08883870164534413,0.01,-0.02,0.010000000000000009,-0.020000000000000018,8.673617379884035e-18,1.734723475976807e-17,2.1889140197636334,0.26051886038423683,0.18130347274560027,0.19245008972987526,0.19245028761371005,1.9788383479046878e-07
