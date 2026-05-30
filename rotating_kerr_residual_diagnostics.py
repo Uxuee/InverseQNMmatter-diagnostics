@@ -7,6 +7,18 @@ import numpy as np
 import pandas as pd
 
 
+"""Residual diagnostics relative to an equatorial Kerr photon-ring baseline.
+
+The rotating eikonal baseline uses the azimuthal phase number m:
+
+    omega_QNM = m*Omega_phi - i*(n + 1/2)*lambda.
+
+The geodesic photon-ring frequency Omega_phi is signed by the branch
+convention. Residuals are computed from positive QNM frequency magnitudes,
+using Re(omega_QNM)/abs(m) and abs(Omega_phi).
+"""
+
+
 # Demo/default inputs. Units use G = c = 1.
 M = 1.0
 a = 0.7
@@ -120,7 +132,7 @@ def extract_equatorial_kerr_observables(
     The equatorial Kerr eikonal relation uses the azimuthal number m:
     omega_QNM = m*Omega_phi - i*(n+1/2)*lambda.
     For residual diagnostics we compare positive observed QNM frequency
-    magnitudes, so Omega_obs_abs = Re(omega_qnm)/abs(m).
+    magnitudes, so Omega_obs = Re(omega_qnm)/abs(m).
     """
 
     if m == 0:
@@ -129,11 +141,11 @@ def extract_equatorial_kerr_observables(
         )
     if n <= -0.5:
         raise ValueError("n must satisfy n + 1/2 > 0.")
-    Omega_obs_abs = np.real(omega_qnm) / abs(m)
-    if Omega_obs_abs < 0.0:
+    Omega_obs = np.real(omega_qnm) / abs(m)
+    if Omega_obs < 0.0:
         raise ValueError("Expected positive Re(omega_qnm) for residual diagnostics.")
     lambda_obs = -np.imag(omega_qnm) / (n + 0.5)
-    return Omega_obs_abs, lambda_obs
+    return Omega_obs, lambda_obs
 
 
 def compute_kerr_residuals(
@@ -146,20 +158,20 @@ def compute_kerr_residuals(
 ) -> dict[str, float]:
     validate_branch(branch)
     validate_azimuthal_number(m, branch)
-    Omega_obs_abs, lambda_obs = extract_equatorial_kerr_observables(omega_qnm, m, n)
+    Omega_obs, lambda_obs = extract_equatorial_kerr_observables(omega_qnm, m, n)
     r_ph = kerr_photon_radius(M, a, branch)
-    Omega_phi = kerr_photon_frequency_signed(M, a, branch)
-    Omega_K_abs = abs(Omega_phi)
-    lambda_K = kerr_lyapunov_exponent(M, a, branch)
+    Omega_Kerr_signed = kerr_photon_frequency_signed(M, a, branch)
+    Omega_Kerr_abs = abs(Omega_Kerr_signed)
+    lambda_Kerr = kerr_lyapunov_exponent(M, a, branch)
     return {
-        "Omega_obs_abs": Omega_obs_abs,
+        "Omega_obs": Omega_obs,
         "lambda_obs": lambda_obs,
         "r_ph": r_ph,
-        "Omega_phi_signed": Omega_phi,
-        "Omega_K_abs": Omega_K_abs,
-        "lambda_K": lambda_K,
-        "A_Kerr": Omega_obs_abs / Omega_K_abs - 1.0,
-        "B_Kerr": lambda_obs / lambda_K - 1.0,
+        "Omega_Kerr_signed": Omega_Kerr_signed,
+        "Omega_Kerr_abs": Omega_Kerr_abs,
+        "lambda_Kerr": lambda_Kerr,
+        "A_Kerr": Omega_obs / Omega_Kerr_abs - 1.0,
+        "B_Kerr": lambda_obs / lambda_Kerr - 1.0,
     }
 
 
@@ -174,12 +186,12 @@ def synthetic_residual_demo(
     B_Kerr_injected: float = -0.02,
 ) -> pd.DataFrame:
     validate_azimuthal_number(m, branch)
-    Omega_phi = kerr_photon_frequency_signed(M, a, branch)
-    Omega_K_abs = abs(Omega_phi)
-    lambda_K = kerr_lyapunov_exponent(M, a, branch)
-    Omega_obs_abs = Omega_K_abs * (1.0 + A_Kerr_injected)
-    lambda_obs = lambda_K * (1.0 + B_Kerr_injected)
-    omega_qnm = abs(m) * Omega_obs_abs - 1j * (n + 0.5) * lambda_obs
+    Omega_Kerr_signed = kerr_photon_frequency_signed(M, a, branch)
+    Omega_Kerr_abs = abs(Omega_Kerr_signed)
+    lambda_Kerr = kerr_lyapunov_exponent(M, a, branch)
+    Omega_obs = Omega_Kerr_abs * (1.0 + A_Kerr_injected)
+    lambda_obs = lambda_Kerr * (1.0 + B_Kerr_injected)
+    omega_qnm = abs(m) * Omega_obs - 1j * (n + 0.5) * lambda_obs
     recovered = compute_kerr_residuals(omega_qnm, M, a, m, n, branch)
     schwarzschild_expected = 1.0 / (3.0 * np.sqrt(3.0) * M)
     schwarzschild_lambda = kerr_lyapunov_exponent(M, 0.0, branch)
@@ -196,9 +208,9 @@ def synthetic_residual_demo(
                 "branch": branch,
                 "omega_re": omega_qnm.real,
                 "omega_im": omega_qnm.imag,
-                "Omega_phi_signed": Omega_phi,
-                "Omega_K_abs": Omega_K_abs,
-                "Omega_obs_abs": recovered["Omega_obs_abs"],
+                "Omega_Kerr_signed": Omega_Kerr_signed,
+                "Omega_Kerr_abs": Omega_Kerr_abs,
+                "Omega_obs": recovered["Omega_obs"],
                 "A_Kerr_injected": A_Kerr_injected,
                 "B_Kerr_injected": B_Kerr_injected,
                 "A_Kerr_recovered": recovered["A_Kerr"],
@@ -206,7 +218,7 @@ def synthetic_residual_demo(
                 "A_abs_error": abs(recovered["A_Kerr"] - A_Kerr_injected),
                 "B_abs_error": abs(recovered["B_Kerr"] - B_Kerr_injected),
                 "r_ph": recovered["r_ph"],
-                "lambda_K": recovered["lambda_K"],
+                "lambda_Kerr": recovered["lambda_Kerr"],
                 "schwarzschild_lambda_expected": schwarzschild_expected,
                 "schwarzschild_lambda_numeric": schwarzschild_lambda,
                 "schwarzschild_lambda_abs_error": abs(
@@ -238,11 +250,42 @@ def scan_kerr_baselines(M: float) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def plot_branch_scan(scan: pd.DataFrame, y_column: str, ylabel: str, title: str, filename: Path) -> None:
+def schwarzschild_limit_check(M: float) -> pd.DataFrame:
+    expected = 1.0 / (3.0 * np.sqrt(3.0))
+    lambda_numeric = M * kerr_lyapunov_exponent(M, 0.0, branch=1)
+    return pd.DataFrame(
+        [
+            {
+                "M": M,
+                "a": 0.0,
+                "a_over_M": 0.0,
+                "M_lambda_Kerr_numeric": lambda_numeric,
+                "M_lambda_Kerr_expected": expected,
+                "abs_error": abs(lambda_numeric - expected),
+            }
+        ]
+    )
+
+
+def plot_branch_scan(
+    scan: pd.DataFrame,
+    y_column: str,
+    ylabel: str,
+    title: str,
+    filename: Path,
+) -> None:
     fig, ax = plt.subplots(figsize=(7.5, 5), constrained_layout=True)
     for label, group in scan.groupby("branch_label"):
         ordered = group.sort_values("a_over_M")
         ax.plot(ordered["a_over_M"], ordered[y_column], label=label)
+    if y_column == "M_lambda_K":
+        ax.axhline(
+            1.0 / (3.0 * np.sqrt(3.0)),
+            color="black",
+            linestyle="--",
+            linewidth=1.0,
+            label="Schwarzschild limit",
+        )
     ax.set_xlabel("a/M")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
@@ -276,6 +319,8 @@ def main() -> None:
 
     demo = synthetic_residual_demo(M, a, ell, m, n, branch)
     demo.to_csv(out_dir / "kerr_residual_demo.csv", index=False)
+    sanity = schwarzschild_limit_check(M)
+    sanity.to_csv(out_dir / "schwarzschild_limit_check.csv", index=False)
 
     scan = scan_kerr_baselines(M)
     plot_branch_scan(
@@ -305,6 +350,9 @@ def main() -> None:
     print(f"  {out_dir}")
     print()
     print(demo.to_string(index=False))
+    print()
+    print("Schwarzschild-limit check:")
+    print(sanity.to_string(index=False))
 
 
 if __name__ == "__main__":

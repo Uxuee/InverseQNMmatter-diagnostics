@@ -151,6 +151,7 @@ outputs/rotating_kerr_residuals/
 Rotating Kerr residual outputs:
 
 - `kerr_residual_demo.csv`
+- `schwarzschild_limit_check.csv`
 - `kerr_photon_radius_vs_spin.png`
 - `kerr_photon_frequency_vs_spin.png`
 - `kerr_lyapunov_vs_spin.png`
@@ -209,9 +210,9 @@ reference would mix spin effects with any possible effective-matter or
 hair-like residual.
 
 This repository therefore includes a rotating Kerr residual diagnostic module.
-It computes the equatorial Kerr photon-ring radius, orbital frequency, and
-Lyapunov exponent, then compares an input eikonal QNM frequency with the Kerr
-baseline.
+It computes the equatorial Kerr photon-ring radius, signed orbital frequency,
+and Lyapunov exponent, then compares an input eikonal QNM frequency with the
+Kerr baseline.
 
 For the equatorial Kerr baseline, the relevant phase number is the azimuthal
 number `m`, not only `ell`:
@@ -220,26 +221,48 @@ number `m`, not only `ell`:
 omega_QNM = m * Omega_phi - i * (n + 1/2) * lambda
 ```
 
-The geodesic frequency `Omega_phi` is signed: prograde branches are positive
-and retrograde branches are negative in this convention. For residual
-diagnostics, the code compares positive QNM frequency magnitudes:
+Here `ell` can still be stored as mode metadata, but it is not used to extract
+the rotating equatorial orbital frequency. The extraction uses:
 
 ```text
-Omega_obs_abs = Re(omega_QNM) / abs(m)
-Omega_Kerr_abs = abs(Omega_phi)
+Omega_obs = Re(omega_QNM) / abs(m)
+lambda_obs = -Im(omega_QNM) / (n + 0.5)
+```
+
+The geodesic frequency `Omega_phi`, reported in the code as
+`Omega_Kerr_signed`, is signed by branch convention: prograde branches are
+positive and retrograde branches are negative. Real QNM frequencies are usually
+reported with positive real part, so the residual diagnostic compares positive
+frequency magnitudes:
+
+```text
+Omega_Kerr_abs = abs(Omega_Kerr_signed)
+A_Kerr = Omega_obs/Omega_Kerr_abs - 1
+B_Kerr = lambda_obs/lambda_Kerr - 1
 ```
 
 The demo uses `M = 1`, `a = 0.7`, `ell = 2`, `m = 2`, `n = 0`, and the
 prograde branch. In this convention, prograde uses `branch = +1` with `m > 0`,
 while retrograde uses `branch = -1` with `m < 0`.
 
-The resulting quantities are:
+The synthetic demo injects:
 
-- `A_Kerr = Omega_obs_abs/Omega_Kerr_abs - 1`
-- `B_Kerr = lambda/lambda_Kerr - 1`
+```text
+A_Kerr = 0.01
+B_Kerr = -0.02
+```
 
-These should be interpreted as residual shifts relative to Kerr, not yet as
-direct matter diagnostics.
+It constructs the positive-real-frequency synthetic QNM with `abs(m)`, recovers
+the residuals, and saves the injected-versus-recovered comparison plot. These
+residuals should be interpreted as shifts relative to Kerr, not yet as direct
+matter diagnostics.
+
+The module also saves a Schwarzschild-limit sanity check. At `a = 0`, it
+verifies:
+
+```text
+M * lambda_Kerr ~= 1/(3*sqrt(3)) ~= 0.19245
+```
 
 The rotating module is a baseline-removal step. A physical rotating
 matter/hair interpretation requires additional perturbative formulas for the
