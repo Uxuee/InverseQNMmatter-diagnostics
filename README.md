@@ -213,9 +213,29 @@ It computes the equatorial Kerr photon-ring radius, orbital frequency, and
 Lyapunov exponent, then compares an input eikonal QNM frequency with the Kerr
 baseline.
 
+For the equatorial Kerr baseline, the relevant phase number is the azimuthal
+number `m`, not only `ell`:
+
+```text
+omega_QNM = m * Omega_phi - i * (n + 1/2) * lambda
+```
+
+The geodesic frequency `Omega_phi` is signed: prograde branches are positive
+and retrograde branches are negative in this convention. For residual
+diagnostics, the code compares positive QNM frequency magnitudes:
+
+```text
+Omega_obs_abs = Re(omega_QNM) / abs(m)
+Omega_Kerr_abs = abs(Omega_phi)
+```
+
+The demo uses `M = 1`, `a = 0.7`, `ell = 2`, `m = 2`, `n = 0`, and the
+prograde branch. In this convention, prograde uses `branch = +1` with `m > 0`,
+while retrograde uses `branch = -1` with `m < 0`.
+
 The resulting quantities are:
 
-- `A_Kerr = Omega/Omega_Kerr - 1`
+- `A_Kerr = Omega_obs_abs/Omega_Kerr_abs - 1`
 - `B_Kerr = lambda/lambda_Kerr - 1`
 
 These should be interpreted as residual shifts relative to Kerr, not yet as

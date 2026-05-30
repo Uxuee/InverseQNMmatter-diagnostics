@@ -9,8 +9,9 @@ import pandas as pd
 
 # Demo/default inputs. Units use G = c = 1.
 M = 1.0
-a = 0.6
-ell = 4
+a = 0.7
+ell = 2
+m = 2
 n = 0
 branch = 1  # +1 prograde, -1 retrograde
 
@@ -27,6 +28,18 @@ def validate_branch(branch: int) -> None:
         raise ValueError("branch must be +1 for prograde or -1 for retrograde.")
 
 
+def validate_azimuthal_number(m: int, branch: int) -> None:
+    if m == 0:
+        raise ValueError(
+            "The equatorial Kerr eikonal baseline requires nonzero azimuthal number m."
+        )
+    if np.sign(m) != branch:
+        raise ValueError(
+            "Use sign(m) consistent with the branch: m > 0 for prograde, "
+            "m < 0 for retrograde."
+        )
+
+
 def kerr_photon_radius(M: float, a: float, branch: int) -> float:
     validate_kerr_spin(M, a)
     validate_branch(branch)
@@ -34,7 +47,7 @@ def kerr_photon_radius(M: float, a: float, branch: int) -> float:
     return 2.0 * M * (1.0 + np.cos((2.0 / 3.0) * np.arccos(argument)))
 
 
-def kerr_photon_frequency(M: float, a: float, branch: int) -> float:
+def kerr_photon_frequency_signed(M: float, a: float, branch: int) -> float:
     r_ph = kerr_photon_radius(M, a, branch)
     sqrt_M = np.sqrt(M)
     return branch * sqrt_M / (r_ph**1.5 + branch * a * sqrt_M)
@@ -97,35 +110,55 @@ def kerr_lyapunov_exponent(M: float, a: float, branch: int) -> float:
     return float(np.sqrt(max(lambda_sq, 0.0)))
 
 
-def extract_eikonal_observables(omega_qnm: complex, ell: int, n: int) -> tuple[float, float]:
-    if ell == 0:
-        raise ValueError("ell must be nonzero.")
+def extract_equatorial_kerr_observables(
+    omega_qnm: complex,
+    m: int,
+    n: int,
+) -> tuple[float, float]:
+    """Extract positive-frequency eikonal observables for a Kerr baseline.
+
+    The equatorial Kerr eikonal relation uses the azimuthal number m:
+    omega_QNM = m*Omega_phi - i*(n+1/2)*lambda.
+    For residual diagnostics we compare positive observed QNM frequency
+    magnitudes, so Omega_obs_abs = Re(omega_qnm)/abs(m).
+    """
+
+    if m == 0:
+        raise ValueError(
+            "The equatorial Kerr eikonal baseline requires nonzero azimuthal number m."
+        )
     if n <= -0.5:
         raise ValueError("n must satisfy n + 1/2 > 0.")
-    Omega = omega_qnm.real / ell
-    lambda_obs = -omega_qnm.imag / (n + 0.5)
-    return Omega, lambda_obs
+    Omega_obs_abs = np.real(omega_qnm) / abs(m)
+    if Omega_obs_abs < 0.0:
+        raise ValueError("Expected positive Re(omega_qnm) for residual diagnostics.")
+    lambda_obs = -np.imag(omega_qnm) / (n + 0.5)
+    return Omega_obs_abs, lambda_obs
 
 
 def compute_kerr_residuals(
     omega_qnm: complex,
     M: float,
     a: float,
-    ell: int,
+    m: int,
     n: int,
     branch: int,
 ) -> dict[str, float]:
-    Omega_obs, lambda_obs = extract_eikonal_observables(omega_qnm, ell, n)
+    validate_branch(branch)
+    validate_azimuthal_number(m, branch)
+    Omega_obs_abs, lambda_obs = extract_equatorial_kerr_observables(omega_qnm, m, n)
     r_ph = kerr_photon_radius(M, a, branch)
-    Omega_K = kerr_photon_frequency(M, a, branch)
+    Omega_phi = kerr_photon_frequency_signed(M, a, branch)
+    Omega_K_abs = abs(Omega_phi)
     lambda_K = kerr_lyapunov_exponent(M, a, branch)
     return {
-        "Omega_obs": Omega_obs,
+        "Omega_obs_abs": Omega_obs_abs,
         "lambda_obs": lambda_obs,
         "r_ph": r_ph,
-        "Omega_K": Omega_K,
+        "Omega_phi_signed": Omega_phi,
+        "Omega_K_abs": Omega_K_abs,
         "lambda_K": lambda_K,
-        "A_Kerr": Omega_obs / Omega_K - 1.0,
+        "A_Kerr": Omega_obs_abs / Omega_K_abs - 1.0,
         "B_Kerr": lambda_obs / lambda_K - 1.0,
     }
 
@@ -134,17 +167,20 @@ def synthetic_residual_demo(
     M: float,
     a: float,
     ell: int,
+    m: int,
     n: int,
     branch: int,
     A_Kerr_injected: float = 0.01,
     B_Kerr_injected: float = -0.02,
 ) -> pd.DataFrame:
-    Omega_K = kerr_photon_frequency(M, a, branch)
+    validate_azimuthal_number(m, branch)
+    Omega_phi = kerr_photon_frequency_signed(M, a, branch)
+    Omega_K_abs = abs(Omega_phi)
     lambda_K = kerr_lyapunov_exponent(M, a, branch)
-    Omega_obs = Omega_K * (1.0 + A_Kerr_injected)
+    Omega_obs_abs = Omega_K_abs * (1.0 + A_Kerr_injected)
     lambda_obs = lambda_K * (1.0 + B_Kerr_injected)
-    omega_qnm = ell * Omega_obs - 1j * (n + 0.5) * lambda_obs
-    recovered = compute_kerr_residuals(omega_qnm, M, a, ell, n, branch)
+    omega_qnm = abs(m) * Omega_obs_abs - 1j * (n + 0.5) * lambda_obs
+    recovered = compute_kerr_residuals(omega_qnm, M, a, m, n, branch)
     schwarzschild_expected = 1.0 / (3.0 * np.sqrt(3.0) * M)
     schwarzschild_lambda = kerr_lyapunov_exponent(M, 0.0, branch)
 
@@ -155,10 +191,14 @@ def synthetic_residual_demo(
                 "a": a,
                 "a_over_M": a / M,
                 "ell": ell,
+                "m": m,
                 "n": n,
                 "branch": branch,
                 "omega_re": omega_qnm.real,
                 "omega_im": omega_qnm.imag,
+                "Omega_phi_signed": Omega_phi,
+                "Omega_K_abs": Omega_K_abs,
+                "Omega_obs_abs": recovered["Omega_obs_abs"],
                 "A_Kerr_injected": A_Kerr_injected,
                 "B_Kerr_injected": B_Kerr_injected,
                 "A_Kerr_recovered": recovered["A_Kerr"],
@@ -166,7 +206,6 @@ def synthetic_residual_demo(
                 "A_abs_error": abs(recovered["A_Kerr"] - A_Kerr_injected),
                 "B_abs_error": abs(recovered["B_Kerr"] - B_Kerr_injected),
                 "r_ph": recovered["r_ph"],
-                "Omega_K": recovered["Omega_K"],
                 "lambda_K": recovered["lambda_K"],
                 "schwarzschild_lambda_expected": schwarzschild_expected,
                 "schwarzschild_lambda_numeric": schwarzschild_lambda,
@@ -189,7 +228,10 @@ def scan_kerr_baselines(M: float) -> pd.DataFrame:
                     "branch": branch_value,
                     "branch_label": "prograde" if branch_value == 1 else "retrograde",
                     "r_ph_over_M": kerr_photon_radius(M, a_value, branch_value) / M,
-                    "M_Omega_K": M * kerr_photon_frequency(M, a_value, branch_value),
+                    "M_Omega_phi_signed": M
+                    * kerr_photon_frequency_signed(M, a_value, branch_value),
+                    "M_Omega_K_abs": M
+                    * abs(kerr_photon_frequency_signed(M, a_value, branch_value)),
                     "M_lambda_K": M * kerr_lyapunov_exponent(M, a_value, branch_value),
                 }
             )
@@ -232,7 +274,7 @@ def main() -> None:
     out_dir = Path("outputs") / "rotating_kerr_residuals"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    demo = synthetic_residual_demo(M, a, ell, n, branch)
+    demo = synthetic_residual_demo(M, a, ell, m, n, branch)
     demo.to_csv(out_dir / "kerr_residual_demo.csv", index=False)
 
     scan = scan_kerr_baselines(M)
@@ -245,8 +287,8 @@ def main() -> None:
     )
     plot_branch_scan(
         scan,
-        "M_Omega_K",
-        "M * Omega_K",
+        "M_Omega_phi_signed",
+        "M * Omega_phi (signed)",
         "Equatorial Kerr photon-ring frequency",
         out_dir / "kerr_photon_frequency_vs_spin.png",
     )
