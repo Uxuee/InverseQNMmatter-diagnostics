@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it using the metadata below."
+title: "Inverse QNM Matter Diagnostics"
+authors:
+  - family-names: "Uxue"
+    given-names: "Ariadna"
+year: 2026
+repository-code: "https://github.com/Uxuee/InverseQNMmatter-diagnostics"
+license: "MIT"
+
