@@ -1,7 +1,7 @@
 # What Can One Eikonal QNM Tell Us About Effective Matter?
 
-Inverse diagnostics for the matter combinations fixed by eikonal QNM shifts
-around black holes.
+Inverse diagnostics for the effective matter combinations constrained by
+eikonal QNM shifts around black holes.
 
 This repository is a careful research prototype. It starts from one complex
 eikonal QNM frequency and extracts the effective matter combinations fixed by
@@ -13,11 +13,12 @@ A single complex eikonal QNM provides only two real quantities: `Omega` and
 `lambda`.
 
 Therefore, this code does not reconstruct the full matter profile `rho(r)`,
-and it does not determine `w_theta` separately in a model-independent way.
+and it does not determine `w_theta` separately in a profile-independent way
+within the perturbative setup.
 Instead, it extracts only the combinations of metric and matter variables that
 are fixed by the perturbative formulas.
 
-The model-independent diagnostics are:
+The diagnostic combinations fixed by the perturbative formulas are:
 
 - `delta_f(r0)`: metric deformation at the photon sphere
 - `I_rho`: integrated density diagnostic outside the photon sphere
@@ -71,9 +72,10 @@ local_combo = rho(r0) * (1 + w_theta)
 Here `I_rho` is an integrated diagnostic, not a full density reconstruction,
 and `local_combo` is the combination `rho(r0) * (1 + w_theta)`.
 
-## Validation Models
+## Forward examples and sanity checks
 
-The script validates the inverse formulas using three forward examples:
+The script sanity-checks the inverse diagnostic pipeline using three forward
+examples with known first-order eikonal QNM shifts:
 
 - Kiselev analytic QNM shifts with parameters `(w_q, k)`
 - Bardeen first-order shifts:
@@ -83,12 +85,12 @@ The script validates the inverse formulas using three forward examples:
   - `deltaOmega/Omega0 = q^3/(27 M^3)`
   - `deltaLambda/lambda0 = -2 q^3/(27 M^3)`
 
-The validation checks that the inverse diagnostic pipeline recovers the
-effective combinations implied by these known shift formulas.
+These checks show that the inverse diagnostic pipeline recovers the effective
+combinations implied by these known shift formulas.
 
 ## Optional toy-profile reconstruction
 
-This step is not model-independent. It only shows what `rho0` and `w_theta`
+This step is not profile-independent. It only shows what `rho0` and `w_theta`
 would be if the exponential density profile were assumed:
 
 ```text
@@ -100,7 +102,7 @@ distribution.
 
 With fixed `L`, the code uses `I_rho` to estimate `rho0`, then uses
 `local_combo = rho(r0) * (1 + w_theta)` to estimate a conditional value of
-`w_theta`. This is a toy assumed profile, not a model-independent result.
+`w_theta`. This is a toy assumed profile, not a profile-independent result.
 
 ## Quick Start
 
@@ -128,8 +130,10 @@ outputs/inverse_diagnostics/
 - `profile_reconstruction.csv`
 - `relative_shifts_bardeen_hayward.png`
 - `relative_shifts_kiselev.png`
-- `I_rho_by_model.png`
-- `local_combo_by_model.png`
+- `I_rho_bardeen_hayward.png`
+- `I_rho_kiselev.png`
+- `local_combo_bardeen_hayward.png`
+- `local_combo_kiselev.png`
 - `diagnostic_trend_qualitative_comparison.png`
 
 ## Figures
@@ -144,22 +148,36 @@ Caption: Relative shifts `A = deltaOmega/Omega0` and
 Caption: Relative shifts `A = deltaOmega/Omega0` and
 `B = deltaLambda/lambda0` versus `k` for Kiselev at fixed `w_q` values.
 
-![Integrated density diagnostic](outputs/inverse_diagnostics/I_rho_by_model.png)
+For the Kiselev examples, `k` is treated as a small amplitude parameter in
+units with `M = 1`. Its dimensional interpretation depends on `w_q`, so
+comparisons across different `w_q` values should be read as qualitative trends.
 
-Caption: Inferred integrated density diagnostic `I_rho`. This is a qualitative
-trend plot because the sampled parameter intervals are model-dependent.
+![Integrated density diagnostic for Bardeen and Hayward](outputs/inverse_diagnostics/I_rho_bardeen_hayward.png)
 
-![Local pressure-density combination](outputs/inverse_diagnostics/local_combo_by_model.png)
+Caption: Inferred integrated density diagnostic `I_rho` versus `q / M` for
+Bardeen and Hayward.
+
+![Integrated density diagnostic for Kiselev](outputs/inverse_diagnostics/I_rho_kiselev.png)
+
+Caption: Inferred integrated density diagnostic `I_rho` versus `k` for Kiselev
+at fixed `w_q` values.
+
+![Local pressure-density combination for Bardeen and Hayward](outputs/inverse_diagnostics/local_combo_bardeen_hayward.png)
+
+Caption: Inferred local combination `rho(r0) * (1 + w_theta)` versus `q / M`
+for Bardeen and Hayward.
+
+![Local pressure-density combination for Kiselev](outputs/inverse_diagnostics/local_combo_kiselev.png)
 
 Caption: Inferred local combination `rho(r0) * (1 + w_theta)`. This is a
 diagnostic combination, not a separate determination of `rho(r0)` and
-`w_theta`.
+`w_theta`. The plot shows Kiselev trends versus `k` at fixed `w_q` values.
 
 ![Qualitative diagnostic trend comparison](outputs/inverse_diagnostics/diagnostic_trend_qualitative_comparison.png)
 
-Caption: Qualitative diagnostic-range comparison across validation models. The
-range comparison is qualitative only. The sampled parameter intervals are
-model-dependent, so the bars should not be interpreted as a direct physical
+This comparison is qualitative only. The sampled parameter intervals are
+model-dependent, and the parameters `q` and `k` do not have the same physical
+meaning. Therefore, the bars should not be interpreted as a direct physical
 ranking of the models.
 
 ## Scientific Status

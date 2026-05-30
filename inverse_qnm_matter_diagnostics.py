@@ -248,8 +248,19 @@ def plot_bardeen_hayward_shifts(df: pd.DataFrame, out_dir: Path) -> None:
     fig, ax = plt.subplots(figsize=(7.5, 5), constrained_layout=True)
     for model in ["Bardeen", "Hayward"]:
         ordered = df[df["model"] == model].sort_values("q")
-        ax.plot(ordered["q"], ordered["A"], marker="o", label=f"{model}: A")
-        ax.plot(ordered["q"], ordered["B"], marker="s", linestyle="--", label=f"{model}: B")
+        ax.plot(
+            ordered["q"],
+            ordered["A"],
+            marker="o",
+            label=f"{model}: A = deltaOmega/Omega0",
+        )
+        ax.plot(
+            ordered["q"],
+            ordered["B"],
+            marker="s",
+            linestyle="--",
+            label=f"{model}: B = deltaLambda/lambda0",
+        )
 
     ax.set_xlabel("q / M")
     ax.set_ylabel("relative shifts")
@@ -264,8 +275,14 @@ def plot_kiselev_shifts(df: pd.DataFrame, out_dir: Path) -> None:
     kiselev = df[df["model"] == "Kiselev"]
     for w_q, subgroup in kiselev.groupby("w_q"):
         ordered = subgroup.sort_values("k")
-        ax.plot(ordered["k"], ordered["A"], marker="o", label=f"A, w_q={w_q:g}")
-        ax.plot(ordered["k"], ordered["B"], marker="s", linestyle="--", label=f"B, w_q={w_q:g}")
+        ax.plot(ordered["k"], ordered["A"], marker="o", label=f"A, w_q = {w_q:g}")
+        ax.plot(
+            ordered["k"],
+            ordered["B"],
+            marker="s",
+            linestyle="--",
+            label=f"B, w_q = {w_q:g}",
+        )
 
     ax.set_xlabel("k")
     ax.set_ylabel("relative shifts")
@@ -275,20 +292,44 @@ def plot_kiselev_shifts(df: pd.DataFrame, out_dir: Path) -> None:
     plt.close(fig)
 
 
-def plot_diagnostic(df: pd.DataFrame, out_dir: Path, column: str, ylabel: str, filename: str) -> None:
+def plot_bardeen_hayward_diagnostic(
+    df: pd.DataFrame,
+    out_dir: Path,
+    column: str,
+    ylabel: str,
+    title: str,
+    filename: str,
+) -> None:
     fig, ax = plt.subplots(figsize=(7.5, 5), constrained_layout=True)
-    for model, group in df.groupby("model"):
-        if model == "Kiselev":
-            for w_q, subgroup in group.groupby("w_q"):
-                ordered = subgroup.sort_values("k")
-                ax.plot(ordered["k"], ordered[column], marker="o", label=f"Kiselev w_q={w_q:g}")
-        else:
-            ordered = group.sort_values("q")
-            ax.plot(ordered["q"], ordered[column], marker="o", label=model)
+    for model in ["Bardeen", "Hayward"]:
+        ordered = df[df["model"] == model].sort_values("q")
+        ax.plot(ordered["q"], ordered[column], marker="o", label=model)
 
-    ax.set_xlabel("model parameter (q for Bardeen/Hayward, k for Kiselev)")
+    ax.set_xlabel("q / M")
     ax.set_ylabel(ylabel)
-    ax.set_title(f"{ylabel} (qualitative trend comparison)")
+    ax.set_title(title)
+    ax.legend(fontsize=8)
+    fig.savefig(out_dir / filename, dpi=180)
+    plt.close(fig)
+
+
+def plot_kiselev_diagnostic(
+    df: pd.DataFrame,
+    out_dir: Path,
+    column: str,
+    ylabel: str,
+    title: str,
+    filename: str,
+) -> None:
+    fig, ax = plt.subplots(figsize=(7.5, 5), constrained_layout=True)
+    kiselev = df[df["model"] == "Kiselev"]
+    for w_q, subgroup in kiselev.groupby("w_q"):
+        ordered = subgroup.sort_values("k")
+        ax.plot(ordered["k"], ordered[column], marker="o", label=f"w_q = {w_q:g}")
+
+    ax.set_xlabel("k")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
     ax.legend(fontsize=8)
     fig.savefig(out_dir / filename, dpi=180)
     plt.close(fig)
@@ -322,13 +363,37 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     plot_bardeen_hayward_shifts(df, out_dir)
     plot_kiselev_shifts(df, out_dir)
-    plot_diagnostic(df, out_dir, "I_rho", "I_rho", "I_rho_by_model.png")
-    plot_diagnostic(
+    plot_bardeen_hayward_diagnostic(
+        df,
+        out_dir,
+        "I_rho",
+        "I_rho",
+        "Integrated density diagnostic: Bardeen and Hayward",
+        "I_rho_bardeen_hayward.png",
+    )
+    plot_kiselev_diagnostic(
+        df,
+        out_dir,
+        "I_rho",
+        "I_rho",
+        "Integrated density diagnostic: Kiselev",
+        "I_rho_kiselev.png",
+    )
+    plot_bardeen_hayward_diagnostic(
         df,
         out_dir,
         "local_combo",
-        "local_combo = rho(r0)(1+w_theta)",
-        "local_combo_by_model.png",
+        "rho(r0) * (1 + w_theta)",
+        "Local density-pressure diagnostic: Bardeen and Hayward",
+        "local_combo_bardeen_hayward.png",
+    )
+    plot_kiselev_diagnostic(
+        df,
+        out_dir,
+        "local_combo",
+        "rho(r0) * (1 + w_theta)",
+        "Local density-pressure diagnostic: Kiselev",
+        "local_combo_kiselev.png",
     )
     plot_model_comparison(df, out_dir)
 
